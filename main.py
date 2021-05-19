@@ -3,7 +3,7 @@ import discord
 import requests
 import json
 import random
-from replit import db
+#from replit import db
 import keep_alive
 from cheese import Chess
 import cv2
@@ -24,9 +24,11 @@ anytriggers = {
 prev_time = [datetime.now()]
 board = Chess()
 
+responding = [True]
+
+db = {"trigger":["cow","frank"]}
+
 #HELPER FUNCTIONS
-if "responding" not in db.keys():
-    db["responding"] = True
 
 def get_quote():
     response = requests.get("https://zenquotes.io/api/random")
@@ -124,10 +126,10 @@ async def on_message(message):
     if msg.startswith("!responding"):
         value = msg.split("!responding ",1)[1]
         if value.lower() == "true":
-            db["responding"] = True
+            responding[0] = True
             await message.channel.send("Responses turned on")
         else:
-            db["responding"] = False
+            responding[0] = False
             await message.channel.send("Responses turned off") 
     if msg.startswith("!echo"):
         print(msg)
@@ -146,7 +148,7 @@ async def on_message(message):
 
 #Trigger Responses
 
-    if db["responding"]: 
+    if responding[0]: 
         if message.content.startswith(tuple(triggers.keys())):
             await channel.send(triggers.get(message.content))  
         elif message.content.startswith('inspireme'):
@@ -325,4 +327,4 @@ async def on_reaction_add(reaction, user):
 
 #RUN
 keep_alive.keep_alive()
-client.run(os.environ['TOKEN'])
+client.run("Njk4NTY5MjcxNTQxNzYwMTQx.XpHvVQ.kEEfuegZwrekesGkb40IK3GfUX")

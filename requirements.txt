@@ -1,0 +1,6 @@
+chess==1.5.0
+opencv_python==4.5.2.52
+requests==2.25.1
+discord==1.0.1
+Flask==2.0.0
+
