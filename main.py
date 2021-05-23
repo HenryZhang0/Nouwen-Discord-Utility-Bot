@@ -327,4 +327,4 @@ async def on_reaction_add(reaction, user):
 
 #RUN
 keep_alive.keep_alive()
-client.run("Njk4NTY5MjcxNTQxNzYwMTQx.XpHvVQ.kEEfuegZwrekesGkb40IK3GfUX")
+client.run("bot token")
