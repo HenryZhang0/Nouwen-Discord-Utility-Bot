@@ -132,7 +132,7 @@ async def change_server_pic(message):
     await server1.edit(icon=icon)
     
     print('> changed server image ')
-    await message.add_reaction('<:nacc:713563538899075102>')
+    await message.add_reaction('<:egor:677925462919479313>')
     await message.channel.send('Server icon updated', delete_after=5.0)
 
 async def change_bot_pic(message):
@@ -151,7 +151,7 @@ async def change_bot_pic(message):
     pfp = fp.read()
     await client.user.edit(avatar=pfp)
     
-    await message.add_reaction('<:gravityduck:537458327236509706>')
+    await message.add_reaction('<:nacc:713563538899075102>')
     print('> changed image ')
     await message.channel.send('Profile picture updated', delete_after=5.0)
 
@@ -292,7 +292,7 @@ async def on_message(message):
 
 #Updaters
     if msg.endswith("!!"):
-        await message.guild.edit(name=msg[:-2])
+        await message.guild.edit(name=(msg[:-2])[0:100])
         print("Changed server name to", msg[:-2])
 
     if msg=='changepic':
@@ -347,6 +347,15 @@ async def on_reaction_add(reaction, user):
         await server1.edit(icon=icon)
 
         await channel.send('Changed Icon to Egor', delete_after = 5.0)
+    if(str(emoji)=='<:nacc:713563538899075102>'):
+        print('duck')
+        server1 = client.get_guild(352311125242806272)
+        dir = "people/nacc/"+random.choice(os.listdir("people/nacc/"))
+        with open(dir, 'rb') as f:
+            icon = f.read()
+        await server1.edit(icon=icon)
+
+        await channel.send('Changed Profile Pic to Nacc', delete_after = 5.0)
 
     print(str(user), reaction.emoji)
 
@@ -354,4 +363,4 @@ async def on_reaction_add(reaction, user):
 
 #RUN
 keep_alive.keep_alive()
-client.run("sus")
+client.run("Njk4NTY5MjcxNTQxNzYwMTQx.XpHvVQ.BlocGEPE5nKm6w6zKR1H_DRLhmo")
