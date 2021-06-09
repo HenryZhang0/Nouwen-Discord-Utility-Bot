@@ -113,7 +113,7 @@ async def send_person_picture(channel,name):
     dir = random.choice(os.listdir("people/"+name+"/"))
     await channel.send(file=discord.File("people/"+name+"/"+dir))
 
-async def changepic(message):
+async def change_server_pic(message):
     attachment = attachments[-1]
     filetype = '.'+attachment.content_type[attachment.content_type.index('/')+1:]
     filename = "pfp"+filetype
@@ -125,18 +125,35 @@ async def changepic(message):
     name = open("pfp/name.txt", "r")
     dir = 'pfp/'+str(name.read())
     print(dir)
-    for guild in client.guilds:
-        print(guild.id) 
+
     server1 = client.get_guild(352311125242806272)
     with open(dir, 'rb') as f:
         icon = f.read()
     await server1.edit(icon=icon)
+    
+    print('> changed server image ')
+    await message.add_reaction('<:nacc:713563538899075102>')
+    await message.channel.send('Server icon updated', delete_after=5.0)
+
+async def change_bot_pic(message):
+    attachment = attachments[-1]
+    filetype = '.'+attachment.content_type[attachment.content_type.index('/')+1:]
+    filename = "pfp"+filetype
+    print("recieved",attachment.filename)
+    await attachment.save("pfp/pfp"+filetype)
+    f = open("pfp/name.txt", "w")
+    f.write(filename)
+    f.close()
+    name = open("pfp/name.txt", "r")
+    dir = 'pfp/'+str(name.read())
+    print(dir)
     fp = open(dir, 'rb')
     pfp = fp.read()
     await client.user.edit(avatar=pfp)
     
+    await message.add_reaction('<:gravityduck:537458327236509706>')
     print('> changed image ')
-    await message.channel.send('Server picture updated')
+    await message.channel.send('Profile picture updated', delete_after=5.0)
 
 @client.event
 async def on_message(message):
@@ -271,48 +288,37 @@ async def on_message(message):
         
         combine_picture(dir,'people/'+msg[:-2]+'/'+msg[:-2]+'.png')
         await message.channel.send(file=discord.File("combined.png"))
-        
+
+
+#Updaters
+    if msg.endswith("!!"):
+        await message.guild.edit(name=msg[:-2])
+        print("Changed server name to", msg[:-2])
+
     if msg=='changepic':
-        await changepic(message)
+        await change_server_pic(message)
+        await change_bot_pic(message)
         
     
-#Profile Picture Updater
     for attach in message.attachments:
         if any(attach.filename.lower().endswith(image) for image in image_types):
             attachments.append(attach)
             
+            await change_server_pic(message)
             tim = datetime.now()
             print(tim - prev_time[-1])
             cooldown = (tim - prev_time[-1])>timedelta(minutes=10)
                 
             if cooldown:
                 prev_time.append(tim)
-                #DOWNLOAD
-                attachment = attachments[-1]
-                filetype = '.'+attachment.content_type[attachment.content_type.index('/')+1:]
-                filename = "pfp"+filetype
-                print("recieved",attachment.filename)
-                await attachment.save("pfp/pfp"+filetype)
-                f = open("pfp/name.txt", "w")
-                f.write(filename)
-                f.close()
                 try:
-                    name = open("pfp/name.txt", "r")
-                    dir = 'pfp/'+str(name.read())
-                    print(dir)
-                    with open(dir, 'rb') as f:
-                        icon = f.read()
-                    await client.edit_server(message.server, icon=icon)
-                    #fp = open(dir, 'rb')
-                    #pfp = fp.read()
-                    #await client.user.edit(avatar=pfp)
-                    print('> changed image ')
-                    await message.channel.send('Server picture updated')
+                    await change_bot_pic(message)
                 except:
                     print("attempted to change pic FAILED")
-                    #await message.channel.send('bruh you change avatar too fast. Try again later uwu')
+                    await message.channel.send('bruh you change avatar too fast. Try again later uwu')
             else:
                 print("Under 10 minutes cooldown")
+                
         
 @client.event
 async def on_reaction_add(reaction, user):
@@ -331,10 +337,21 @@ async def on_reaction_add(reaction, user):
         await draw_board(channel,'Move Retracted')
     if(str(emoji)=='<:ibs:761582130966691856>'):
         await channel.send('https://cdn.discordapp.com/attachments/843523078931218462/844026855451131944/emoji.png')
+
+    if(str(emoji)=='<:nacc:713563538899075102>'):
+        print('nacc')
+        server1 = client.get_guild(352311125242806272)
+        dir = random.choice(os.listdir("people/nacc/"))
+        with open(dir, 'rb') as f:
+            icon = f.read()
+        await server1.edit(icon=icon)
+
+        await channel.send('Reverted Icon', delete_after = 5.0)
+
     print(str(user), reaction.emoji)
 
 
 
 #RUN
 keep_alive.keep_alive()
-client.run("token")
+client.run("")
