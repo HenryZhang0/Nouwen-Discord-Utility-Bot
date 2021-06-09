@@ -338,15 +338,15 @@ async def on_reaction_add(reaction, user):
     if(str(emoji)=='<:ibs:761582130966691856>'):
         await channel.send('https://cdn.discordapp.com/attachments/843523078931218462/844026855451131944/emoji.png')
 
-    if(str(emoji)=='<:nacc:713563538899075102>'):
-        print('nacc')
+    if(str(emoji)=='<:egor:677925462919479313>'):
+        print('egor')
         server1 = client.get_guild(352311125242806272)
-        dir = random.choice(os.listdir("people/nacc/"))
+        dir = "people/egor/"+random.choice(os.listdir("people/egor/"))
         with open(dir, 'rb') as f:
             icon = f.read()
         await server1.edit(icon=icon)
 
-        await channel.send('Reverted Icon', delete_after = 5.0)
+        await channel.send('Changed Icon to Egor', delete_after = 5.0)
 
     print(str(user), reaction.emoji)
 
@@ -354,4 +354,4 @@ async def on_reaction_add(reaction, user):
 
 #RUN
 keep_alive.keep_alive()
-client.run("")
+client.run("sus")
