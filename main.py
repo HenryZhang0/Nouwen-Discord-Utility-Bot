@@ -113,6 +113,30 @@ async def send_person_picture(channel,name):
     dir = random.choice(os.listdir("people/"+name+"/"))
     await channel.send(file=discord.File("people/"+name+"/"+dir))
 
+async def changepic(message):
+    attachment = attachments[-1]
+    filetype = '.'+attachment.content_type[attachment.content_type.index('/')+1:]
+    filename = "pfp"+filetype
+    print("recieved",attachment.filename)
+    await attachment.save("pfp/pfp"+filetype)
+    f = open("pfp/name.txt", "w")
+    f.write(filename)
+    f.close()
+    name = open("pfp/name.txt", "r")
+    dir = 'pfp/'+str(name.read())
+    print(dir)
+    for guild in client.guilds:
+        print(guild.id) 
+    server1 = client.get_guild(352311125242806272)
+    with open(dir, 'rb') as f:
+        icon = f.read()
+    await server1.edit(icon=icon)
+    fp = open(dir, 'rb')
+    pfp = fp.read()
+    await client.user.edit(avatar=pfp)
+    
+    print('> changed image ')
+    await message.channel.send('Server picture updated')
 
 @client.event
 async def on_message(message):
@@ -249,25 +273,8 @@ async def on_message(message):
         await message.channel.send(file=discord.File("combined.png"))
         
     if msg=='changepic':
-        attachment = attachments[-1]
-        filetype = '.'+attachment.content_type[attachment.content_type.index('/')+1:]
-        filename = "pfp"+filetype
-        print("recieved",attachment.filename)
-        await attachment.save("pfp/pfp"+filetype)
-        f = open("pfp/name.txt", "w")
-        f.write(filename)
-        f.close()
-        try:
-            name = open("pfp/name.txt", "r")
-            dir = 'pfp/'+str(name.read())
-            print(dir)
-            fp = open(dir, 'rb')
-            pfp = fp.read()
-            await client.user.edit(avatar=pfp)
-            print('> changed image ')
-            await message.channel.send('Profile picture updated')
-        except:
-            print("attempted to change pic FAILED")
+        await changepic(message)
+        
     
 #Profile Picture Updater
     for attach in message.attachments:
@@ -293,11 +300,14 @@ async def on_message(message):
                     name = open("pfp/name.txt", "r")
                     dir = 'pfp/'+str(name.read())
                     print(dir)
-                    fp = open(dir, 'rb')
-                    pfp = fp.read()
-                    await client.user.edit(avatar=pfp)
+                    with open(dir, 'rb') as f:
+                        icon = f.read()
+                    await client.edit_server(message.server, icon=icon)
+                    #fp = open(dir, 'rb')
+                    #pfp = fp.read()
+                    #await client.user.edit(avatar=pfp)
                     print('> changed image ')
-                    await message.channel.send('Profile picture updated')
+                    await message.channel.send('Server picture updated')
                 except:
                     print("attempted to change pic FAILED")
                     #await message.channel.send('bruh you change avatar too fast. Try again later uwu')
@@ -327,4 +337,4 @@ async def on_reaction_add(reaction, user):
 
 #RUN
 keep_alive.keep_alive()
-client.run("bot token")
+client.run("token")
