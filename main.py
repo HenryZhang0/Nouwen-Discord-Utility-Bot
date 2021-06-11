@@ -368,7 +368,9 @@ async def on_reaction_add(reaction, user):
             count = max(list(r.count for r in reaction.message.reactions))
 
             if count>=4:
-                await client.get_channel(775432587492589578).send(str(reaction.message.author)+': '+str(reaction.message.content)+' '+reaction.message.attachments[0].url)
+                await client.get_channel(775432587492589578).send(str(reaction.message.author)+': '+str(reaction.message.content))
+                if(reaction.message.attachments):
+                    await client.get_channel(775432587492589578).send(str(reaction.message.attachments[0].url))
                 print('user message deleted')
                 await reaction.message.delete()
                 await reaction.message.channel.send(str(reaction.message.author.mention)+'\'s message has been deleted due to much hate')
