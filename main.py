@@ -1,5 +1,6 @@
 import os
 import discord
+from discord.utils import get
 import requests
 import json
 import random
@@ -133,6 +134,7 @@ async def change_server_pic(message):
     
     print('> changed server image ')
     await message.add_reaction('<:egor:677925462919479313>')
+    await message.add_reaction('<:nacc:713563538899075102>')
     await message.channel.send('Server icon updated', delete_after=5.0)
 
 async def change_bot_pic(message):
@@ -296,15 +298,12 @@ async def on_message(message):
         print("Changed server name to", msg[:-2])
 
     if msg=='changepic':
-        await change_server_pic(message)
-        await change_bot_pic(message)
-        
+        await change_bot_pic(message) 
     
     for attach in message.attachments:
         if any(attach.filename.lower().endswith(image) for image in image_types):
             attachments.append(attach)
             
-            await change_server_pic(message)
             tim = datetime.now()
             print(tim - prev_time[-1])
             cooldown = (tim - prev_time[-1])>timedelta(minutes=10)
@@ -318,7 +317,15 @@ async def on_message(message):
                     await message.channel.send('bruh you change avatar too fast. Try again later uwu')
             else:
                 print("Under 10 minutes cooldown")
-                
+        
+        await change_server_pic(message)
+    
+#Posts
+    if msg.startswith("!announcement"): 
+        print("announcement request")   
+        await message.add_reaction('<:upvote:852978943015649310>')
+        await message.add_reaction('a<:yes:852920705909260298>')
+        await message.add_reaction('a<:no:852920706257256550>')
         
 @client.event
 async def on_reaction_add(reaction, user):
@@ -355,12 +362,48 @@ async def on_reaction_add(reaction, user):
             icon = f.read()
         await server1.edit(icon=icon)
 
-        await channel.send('Changed Profile Pic to Nacc', delete_after = 5.0)
+        await channel.send('Changed Icon to Nacc', delete_after = 5.0)
 
-    print(str(user), reaction.emoji)
+    if(str(emoji)=='<:downvote:853013163258413076>'):
+            count = max(list(r.count for r in reaction.message.reactions))
+
+            if count>=4:
+                await client.get_channel(775432587492589578).send(str(reaction.message.author)+': '+str(reaction.message.content)+' '+reaction.message.attachments[0].url)
+                print('user message deleted')
+                await reaction.message.delete()
+                await reaction.message.channel.send(str(reaction.message.author.mention)+'\'s message has been deleted due to much hate')
+                
+            print("Number of upvotes:", count)
+
+    if(str(emoji)=='<:upvote:852978943015649310>'):
+        if reaction.message.content.startswith('!announcement '):
+            count = reaction.message.reactions[0].count
+            if count>=5:
+                print('Announcement Posted')
+                await reaction.message.reply(str(reaction.message.author.mention)+' announcement posted due to overpowering votes')
+                await reaction.message.clear_reactions()
+                await client.get_channel(720671666333810699).send(str(reaction.message.content)[14:]+'\n\n*`'+'By '+str(reaction.message.author)+'`*')
+                await reaction.message.add_reaction('<a:verified:837524558604009492>')
+            print("Number of upvotes:", reaction.message.reactions[0].count)
+
+    if(str(emoji)=='<a:yes:852920705909260298>'):
+        if reaction.message.channel.permissions_for(user).administrator:
+            print('Announcement Posted')
+            await reaction.message.reply(str(reaction.message.author.mention)+' announcement approved by admin')
+            await reaction.message.clear_reactions()
+            await client.get_channel(720671666333810699).send(str(reaction.message.content)[14:]+'\n\n*`'+'By '+str(reaction.message.author)+'`*')
+            await reaction.message.add_reaction('<a:verified:837524558604009492>')
+
+    if(str(emoji)=='<a:no:852920706257256550>'):
+        if reaction.message.channel.permissions_for(user).administrator:
+            print('Rejected Announcement')
+            await reaction.message.reply(str(reaction.message.author.mention)+' announcement rejected by admin')
+            await reaction.message.clear_reactions()
+            await reaction.message.add_reaction('<:stonksnt:852914352428023808>')
+    print(str(user), reaction.emoji, reaction.message.channel.permissions_for(user).administrator)
 
 
 
 #RUN
 keep_alive.keep_alive()
-client.run("Njk4NTY5MjcxNTQxNzYwMTQx.XpHvVQ.BlocGEPE5nKm6w6zKR1H_DRLhmo")
+client.run("token")
