@@ -4,6 +4,7 @@ from discord.utils import get
 import requests
 import json
 import random
+from shutil import copyfile
 #from replit import db
 import keep_alive
 from cheese import Chess
@@ -165,8 +166,8 @@ def readstat(user):
     else:
         id = str(user)
     if not os.path.exists('players/'+id+'.txt'):
-        ll = open('players/'+id+'.txt','w')
-        ll.write('0\n3\n1\n3\n5\n6\n6')
+        dst = str('players/'+id+'.txt')
+        copyfile('players/starter.txt', dst)
 
     stats = open('players/'+id+'.txt', 'r').read().split('\n')
     return stats
@@ -196,7 +197,7 @@ async def change_nickname(user):
         await user.add_roles(discord.utils.get(user.guild.roles, name='DEAD'))
     else:
         await user.remove_roles(discord.utils.get(user.guild.roles, name='DEAD'))
-    await user.edit(nick=str(user)[0:-5]+ '🖤'*int(readstat(user)[1]))
+    await user.edit(nick=str(user)[0:-5]+' ' + '🖤'*int(readstat(user)[1]))
 
 
 @client.event
@@ -207,11 +208,26 @@ async def on_message(message):
     if message.author == client.user:
         return
 
+    if msg.startswith('!transfer'):
+        person = message.mentions[0]
+        coins = readstat(user)[0]
+        transfer = int(msg.split()[2])
+        if str(user) == str(person):
+            await message.reply('Do you want to get taxed?')
+        elif int(coins)<transfer:
+            await message.reply('you got no money bro')
+        else:
+            await message.reply('💸    `'+ str(person)[0:-5] + ' recieved '+str(int(transfer*0.77))+' coins`')
+            await changestat(person, 0, int(transfer*0.77))
+            await changestat(user, 0, transfer*-1)
+
     if msg.startswith('!shoot'):
         person = message.mentions[0]
         coins = readstat(user)[0]
         if str(user) == str(person):
             await message.reply('No self harming in this server')
+        if int(readstat(person)[1])==0:
+            await message.reply('You\'re beating a dead horse')
         elif int(coins)>=5:
             await message.reply('<:ikillu:706222776880595007>    `'+ str(person)[0:-5] + ' got shot`')
             await changestat(person, 1, -1)
@@ -225,7 +241,7 @@ async def on_message(message):
         coins = readstat(user)[0]
         if int(readstat(person)[1])==3:
             await message.reply('Already max health')
-        if int(coins)>=10:
+        elif int(coins)>=10:
             await message.reply('<a:potion:853439638005612575>    `'+ str(person)[0:-5] + ' gained a life`')
             await changestat(person, 1, 1)
             await changestat(user, 0, -10)
@@ -238,13 +254,23 @@ async def on_message(message):
         if message.channel.permissions_for(message.author).administrator:
             await message.add_reaction('<a:bitcoin:853374907563901008>')
 
-    if random.randint(0,15)==1 and len(msg)>5:
+    if random.randint(0,12)==1 and len(msg)>5:
         await message.add_reaction('<a:bitcoin:853374907563901008>')
-    if msg == '!stats':
-        await message.reply(readstat(user))
-        
-
-
+    if msg.startswith('!stats'):
+        stats = []
+        name = ''
+        names = ['> Coins','> Health','**Shield**','> Block %\t','> Block +\t', '**Weapon**', '> Attack %\t', '> Attack +\t','**Equipment**', '> Modifier\t']
+        output = ''
+        if msg=='!stats':
+            stats = (readstat(user))
+            name = str(user)
+        else:
+            person = message.mentions[0]
+            stats = (readstat(person))   
+            name = str(person)[0:-5] 
+        for i,j in enumerate(stats):
+            output += names[i] +" "+ j + '\n'
+        await message.reply('**__'+name+'__**\n'+output)
 
 
 
@@ -509,4 +535,4 @@ async def on_reaction_add(reaction, user):
 
 #RUN
 keep_alive.keep_alive()
-client.run("Njk4NTY5MjcxNTQxNzYwMTQx.XpHvVQ.p6w9_yDFNk-2z4SbK0eooVrhR_g")
+client.run("")
