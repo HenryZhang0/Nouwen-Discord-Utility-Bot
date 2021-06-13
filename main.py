@@ -3,6 +3,7 @@ import discord
 from discord.utils import get
 import requests
 import json
+import time
 import random
 from shutil import copyfile
 #from replit import db
@@ -233,6 +234,8 @@ async def on_message(message):
             await changestat(person, 1, -1)
             await changestat(user, 0, -5)
             await change_nickname(person)
+            if int(readstat(person)[1])==0:
+                await channel.send(str(person)[0:-5] + ' DIED HAHAHAHA')
         else:
             await message.reply('You don\'t have enough money. (Costs 5)')
 
@@ -254,8 +257,10 @@ async def on_message(message):
         if message.channel.permissions_for(message.author).administrator:
             await message.add_reaction('<a:bitcoin:853374907563901008>')
 
-    if random.randint(0,12)==1 and len(msg)>5:
+    if (sum(map(ord, str(msg)))+int(str(time.time() * 1000)[9]))%(int(str(time.time() * 1000)[10])+1)==4 and len(msg)>5 :
+        print(time.time())
         await message.add_reaction('<a:bitcoin:853374907563901008>')
+
     if msg.startswith('!stats'):
         stats = []
         name = ''
@@ -535,4 +540,4 @@ async def on_reaction_add(reaction, user):
 
 #RUN
 keep_alive.keep_alive()
-client.run("")
+client.run("Njk4NTY5MjcxNTX7szL6zXo75LXobJ9CKk6t6pM")
