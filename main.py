@@ -157,15 +157,109 @@ async def change_bot_pic(message):
     print('> changed image ')
     await message.channel.send('Profile picture updated', delete_after=5.0)
 
+
+def readstat(user):
+    id = 0
+    if not type(user) == int:
+        id = str(user.id)
+    else:
+        id = str(user)
+    if not os.path.exists('players/'+id+'.txt'):
+        ll = open('players/'+id+'.txt','w')
+        ll.write('0\n3\n1\n3\n5\n6\n6')
+
+    stats = open('players/'+id+'.txt', 'r').read().split('\n')
+    return stats
+
+async def changestat(user, stat, modify):
+    id = str(user.id)
+    
+    stats = readstat(user)
+    
+    stats[stat] = str(int(stats[stat])+modify)
+
+    f = open('players/'+id+'.txt', 'w')
+    f.write('\n'.join(stats))
+    f.close()
+    print('file written')
+
+    print(str(user),stats)
+    
+
+async def add_coin(user):
+    print('Coin Found')
+    await changestat(user, 0,1)
+
+async def change_nickname(user):
+    health = readstat(user)[1]
+    if health=='0':
+        await user.add_roles(discord.utils.get(user.guild.roles, name='DEAD'))
+    else:
+        await user.remove_roles(discord.utils.get(user.guild.roles, name='DEAD'))
+    await user.edit(nick=str(user)[0:-5]+ '🖤'*int(readstat(user)[1]))
+
+
 @client.event
 async def on_message(message):
     msg = message.content
     channel = message.channel
+    user = message.author
+    if message.author == client.user:
+        return
+
+    if msg.startswith('!shoot'):
+        person = message.mentions[0]
+        coins = readstat(user)[0]
+        if str(user) == str(person):
+            await message.reply('No self harming in this server')
+        elif int(coins)>=5:
+            await message.reply('<:ikillu:706222776880595007>    `'+ str(person)[0:-5] + ' got shot`')
+            await changestat(person, 1, -1)
+            await changestat(user, 0, -5)
+            await change_nickname(person)
+        else:
+            await message.reply('You don\'t have enough money. (Costs 5)')
+
+    if msg.startswith('!heal'):
+        person = message.mentions[0]
+        coins = readstat(user)[0]
+        if int(readstat(person)[1])==3:
+            await message.reply('Already max health')
+        if int(coins)>=10:
+            await message.reply('<a:potion:853439638005612575>    `'+ str(person)[0:-5] + ' gained a life`')
+            await changestat(person, 1, 1)
+            await changestat(user, 0, -10)
+            await change_nickname(person)
+        else:
+            await message.reply('You don\'t have enough money. (Costs 10)')
+
+
+    if msg == '!coin':
+        if message.channel.permissions_for(message.author).administrator:
+            await message.add_reaction('<a:bitcoin:853374907563901008>')
+
+    if random.randint(0,15)==1 and len(msg)>5:
+        await message.add_reaction('<a:bitcoin:853374907563901008>')
+    if msg == '!stats':
+        await message.reply(readstat(user))
+        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 #UTIL
-    if message.author == client.user:
-        return
     if msg.startswith("!responding"):
         value = msg.split("!responding ",1)[1]
         if value.lower() == "true":
@@ -298,7 +392,8 @@ async def on_message(message):
         print("Changed server name to", msg[:-2])
 
     if msg=='changepic':
-        await change_bot_pic(message) 
+        #await change_bot_pic(message) 
+        await change_server_pic(message)
     
     for attach in message.attachments:
         if any(attach.filename.lower().endswith(image) for image in image_types):
@@ -306,19 +401,20 @@ async def on_message(message):
             
             tim = datetime.now()
             print(tim - prev_time[-1])
-            cooldown = (tim - prev_time[-1])>timedelta(minutes=10)
+            cooldown = (tim - prev_time[-1])>timedelta(minutes=1)
                 
             if cooldown:
                 prev_time.append(tim)
                 try:
-                    await change_bot_pic(message)
+                    pass
+                    #await change_bot_pic(message)
+                    await change_server_pic(message)
                 except:
                     print("attempted to change pic FAILED")
                     await message.channel.send('bruh you change avatar too fast. Try again later uwu')
             else:
                 print("Under 10 minutes cooldown")
         
-        await change_server_pic(message)
     
 #Posts
     if msg.startswith("!announcement"): 
@@ -333,6 +429,11 @@ async def on_reaction_add(reaction, user):
     channel = reaction.message.channel
     if user.bot:
         return
+    if(str(emoji)=='<a:bitcoin:853374907563901008>'):
+        print('coin')
+        await reaction.message.clear_reactions()
+        await add_coin(user)
+        await channel.send(str(user)[0:-5]+' found a coin!! Total Coins: '+ readstat(user)[0], delete_after=5.0)
     if(emoji=='🔄'):
         board.undo()
         board.undo()
@@ -375,7 +476,7 @@ async def on_reaction_add(reaction, user):
                 await reaction.message.delete()
                 await reaction.message.channel.send(str(reaction.message.author.mention)+'\'s message has been deleted due to much hate')
                 
-            print("Number of upvotes:", count)
+            print("Number of downvotes:", count)
 
     if(str(emoji)=='<:upvote:852978943015649310>'):
         if reaction.message.content.startswith('!announcement '):
@@ -408,4 +509,4 @@ async def on_reaction_add(reaction, user):
 
 #RUN
 keep_alive.keep_alive()
-client.run("token")
+client.run("Njk4NTY5MjcxNTQxNzYwMTQx.XpHvVQ.p6w9_yDFNk-2z4SbK0eooVrhR_g")
