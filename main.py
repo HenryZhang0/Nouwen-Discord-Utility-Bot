@@ -173,7 +173,7 @@ async def add_coin(user, amount):
 
 async def change_nickname(user):
     health = players[user.id].hp
-    if health=='0':
+    if health==0:
         await user.add_roles(discord.utils.get(user.guild.roles, name='DEAD'))
     else:
         await user.remove_roles(discord.utils.get(user.guild.roles, name='DEAD'))
@@ -194,6 +194,7 @@ def new_player(user):
 @client.event
 async def on_message(message):
     global channel
+    global players
     msg = message.content
     channel = message.channel
     user = message.author
@@ -228,7 +229,7 @@ async def on_message(message):
         coins = players[user.id].coins
         if str(user) == str(person):
             await message.reply('No self harming in this server')
-        if int(players[person.id].hp)==0:
+        elif int(players[person.id].hp)==0:
             await message.reply('You\'re beating a dead horse')
         elif int(coins)>=5:
             await message.reply('<a:cooldoge:852924340353761361><:ikillu:706222776880595007>')
@@ -236,30 +237,45 @@ async def on_message(message):
             x = players[user.id].attack(players[person.id])
             await send(x)
             await change_nickname(person)
-            if int(readstat(person)[1])==0:
-                await channel.send(str(person)[0:-5] + ' DIED HAHAHAHA')
         else:
             await message.reply('You don\'t have enough money. (Costs 5)')
         update_players()
 
-    if msg.startswith('!heal'):
-        person = message.mentions[0]
-        coins = readstat(user)[0]
-        if str(user) == str(person):
-            players[user.id].heal()
-            players[user.id].coins -= 5
+    if msg.startswith('!heal') and not msg == '!health':
+        person = user
+        if not msg=='!heal':
+            person = message.mentions[0]
+        coins = players[user.id].coins
+        if coins<5:
+            await message.reply('You don\'t have enough money. (Costs 10)')
         elif int(players[person.id].getHp())==3:
             await message.reply('Already max health')
+        elif str(user) == str(person):
+            players[user.id].heal()
+            players[user.id].coins -= 5
+            await change_nickname(person)
+            await message.reply('<a:potion:853439638005612575>    `'+ str(person)[0:-5] + ' gained a life`')
         elif int(coins)>=10:
             await message.reply('<a:potion:853439638005612575>    `'+ str(person)[0:-5] + ' gained a life`')
             players[person.id].heal()
             players[user.id].coins -= 5
             await change_nickname(person)
         else:
-            await message.reply('You don\'t have enough money. (Costs 10)')
+            await message.reply('error')
         update_players()
 
-
+    if msg == '!health' or msg=='!hp':
+        output = ''
+        for p in players.items():
+            p = p[1]
+            output += '`'+str(p) + ': '+ str(p.getHp()) + '`\n'
+        await channel.send("__**HEALTH BOARD**__ <a:hyperheart:853755189889728513>\n" + output)
+    if msg == '!money' or msg=='!coins':
+        output = ''
+        for p in players.items():
+            p = p[1]
+            output += '`'+str(p) + ': '+ str(p.coins) + '`\n'
+        await channel.send("__**MONEY BOARD**__ <a:bitcoin:853374907563901008>\n" + output)
     if msg == '!coin':
         if message.channel.permissions_for(message.author).administrator:
             await message.add_reaction('<a:bitcoin:853374907563901008>')
@@ -274,17 +290,18 @@ async def on_message(message):
     if msg.startswith('!stats'):
         stats = []
         name = ''
-        names = ['> Coins','> Health','**Shield**','> Block %\t','> Block +\t', '**Weapon**', '> Attack %\t', '> Attack +\t','**Equipment**', '> Modifier\t']
+        names = ['> Coins\t','> Health\t','**Shield**','> Block %\t','> Block +\t', '**Weapon**', '> Attack %\t', '> Attack +\t','**Equipment**']
         output = ''
         if msg=='!stats':
-            stats = (readstat(user))
+            target = user
             name = str(user)
         else:
-            person = message.mentions[0]
-            stats = (readstat(person))   
-            name = str(person)[0:-5] 
+            target = message.mentions[0]
+            name = str(target)[0:-5] 
+        o = players[target.id]
+        stats = [o.coins,o.hp,o.shield,o.shield.chance,o.shield.plus,o.weapon,o.weapon.chance, o.weapon.plus,''.join(o.arsenal)]
         for i,j in enumerate(stats):
-            output += names[i] +" "+ j + '\n'
+            output += names[i] +" "+ str(j) + '\n'
         await message.reply('**__'+name+'__**\n'+output)
 
 
@@ -437,8 +454,8 @@ async def on_reaction_add(reaction, user):
     if(str(emoji)=='<a:bytecoin:853448824856248371>'):
         print('bytecoin')
         await reaction.message.clear_reactions()
-        await add_coin(user,32)
-        await channel.send(str(user)[0:-5]+' found a LEGENDARY ***BYTECOIN!!!*** (32 Coins)   Total Coins: '+ str(players[user.id].coins))
+        players[user.id].add_coin(32)
+        await channel.send('<a:bytecoin:853448824856248371> '+str(user)[0:-5]+' found a LEGENDARY ***BYTECOIN!!!*** (32 Coins)   Total Coins: '+ str(players[user.id].coins))
         update_players()
     if(str(emoji)=='<a:bitcoin:853374907563901008>'):
         print('coin')
