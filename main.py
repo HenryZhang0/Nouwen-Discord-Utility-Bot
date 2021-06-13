@@ -11,68 +11,37 @@ import keep_alive
 from cheese import Chess
 import cv2
 from datetime import datetime, date, timedelta
-
-
+import pickle
+from player import Player
 #GLOBAL VARIABLES
 client = discord.Client()
-
 image_types = ["png", "jpeg", "gif", "jpg"]
-triggers = {
-    "bruh": "i was like bruh",
-    "CS": "you mean geomatics?"
-}
-anytriggers = {
-    'poo','peen'
-}
 prev_time = [datetime.now()]
 board = Chess()
-
 responding = [True]
-
-db = {"trigger":["cow","frank"]}
-
-#HELPER FUNCTIONS
+players = dict()
+channel= -1
 
 def get_quote():
     response = requests.get("https://zenquotes.io/api/random")
     json_data = json.loads(response.text)
     quote = json_data[0]['q']
     return(quote)
-
-def update_triggers(msg):
-    if "trigger" in db.keys():
-        trigger = db["trigger"]
-        trigger.append(msg)
-        db["trigger"] = trigger
-    else:
-        db["trigger"] = [msg]
-
-def delete_trigger(index):
-    trigger = db["trigger"]
-    if len(trigger) > index:
-        del trigger[index]
-        db["trigger"] = trigger
-        
-
 def load_board(load):
     board.load_board(load)
 def reset_board():
     board.reset()
-
 def combine_picture(back,front):
     img1 = cv2.imread(back)
     x,y,z = img1.shape
     img2 = cv2.imread(front)
-    #print(x,y,z)
     try:
         img2 = cv2.resize(img2, (y, x))
     except:
         print('image combine failed')
-    #print(img2.shape)
     dst = cv2.addWeighted(img1,0.5,img2,0.5,0)
     cv2.imwrite('combined.png',dst)
     print('images combined')
-
 def check_checkmate():
     out = ''
     if board.checkmate():
@@ -83,7 +52,6 @@ def check_checkmate():
             out+='<:bk:843596932014276641> Black Wins! <:bk:843596932014276641>'
     return out
 attachments = []
-
 async def draw_board(chan,author,msg='',reaction=''):
     pfp = author.avatar_url
     turn = check_checkmate()
@@ -93,7 +61,6 @@ async def draw_board(chan,author,msg='',reaction=''):
         else:
             turn += "<:wr:843596931791847535> White's turn <:wr:843596931791847535>"
    # out=await chan.send(msg+'\n'+turn+'\n'+(board.emote()))
-
     embed=discord.Embed(title=msg, description='Example command "=f3b4"', color=0x0a4ff0)
     embed.set_author(name=str(author), icon_url=pfp)
     embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/527318923763253268/843930270365253642/2560px-Flag_of_Israel.png")
@@ -102,7 +69,18 @@ async def draw_board(chan,author,msg='',reaction=''):
     out = await chan.send(embed=embed)
     if reaction:
         await out.add_reaction(reaction)
-    
+async def send(msg):
+    global channel
+    await channel.send(msg)
+
+
+
+
+
+def loadPlayers():
+    global players
+    players = pickle.load(open("players.pickle","rb"))
+    print('loaded', players)
 
 #Initial
 @client.event
@@ -110,6 +88,7 @@ async def on_ready():
     print('We have logged in as {0.user}'.format(client))
     game = discord.Game("Just wiped out TomatoCow")
     await client.change_presence(status=discord.Status.online, activity=game)
+    loadPlayers()
 
 async def send_person_picture(channel,name):
     name = name[:-1]
@@ -188,26 +167,47 @@ async def changestat(user, stat, modify):
     print(str(user),stats)
     
 
-async def add_coin(user):
+async def add_coin(user, amount):
     print('Coin Found')
-    await changestat(user, 0,1)
+    await changestat(user, 0,amount)
 
 async def change_nickname(user):
-    health = readstat(user)[1]
+    health = players[user.id].hp
     if health=='0':
         await user.add_roles(discord.utils.get(user.guild.roles, name='DEAD'))
     else:
         await user.remove_roles(discord.utils.get(user.guild.roles, name='DEAD'))
-    await user.edit(nick=str(user)[0:-5]+' ' + '🖤'*int(readstat(user)[1]))
+    await user.edit(nick=str(user)[0:-5]+' ' + '🖤'*int(players[user.id].hp))
 
+
+def update_players():
+    pickle_out = open("players.pickle","wb")
+    pickle.dump(players, pickle_out)
+    pickle_out.close()
+
+def new_player(user):
+    global players
+    print(players)
+    players[user.id] = Player(str(user)[0:-5])
+    update_players()
 
 @client.event
 async def on_message(message):
+    global channel
     msg = message.content
     channel = message.channel
     user = message.author
     if message.author == client.user:
         return
+
+    if msg.startswith('!newplayer'):
+        if msg=='!newplayer':
+            new_player(user)
+        else:
+            person = message.mentions[0]
+            new_player(person)
+        print(players)
+        update_players()
 
     if msg.startswith('!transfer'):
         person = message.mentions[0]
@@ -221,36 +221,43 @@ async def on_message(message):
             await message.reply('💸    `'+ str(person)[0:-5] + ' recieved '+str(int(transfer*0.77))+' coins`')
             await changestat(person, 0, int(transfer*0.77))
             await changestat(user, 0, transfer*-1)
+        update_players()
 
-    if msg.startswith('!shoot'):
+    if msg.startswith('!attack'):
         person = message.mentions[0]
-        coins = readstat(user)[0]
+        coins = players[user.id].coins
         if str(user) == str(person):
             await message.reply('No self harming in this server')
-        if int(readstat(person)[1])==0:
+        if int(players[person.id].hp)==0:
             await message.reply('You\'re beating a dead horse')
         elif int(coins)>=5:
-            await message.reply('<:ikillu:706222776880595007>    `'+ str(person)[0:-5] + ' got shot`')
-            await changestat(person, 1, -1)
-            await changestat(user, 0, -5)
+            await message.reply('<a:cooldoge:852924340353761361><:ikillu:706222776880595007>')
+            players[user.id].coins -= 5
+            x = players[user.id].attack(players[person.id])
+            await send(x)
             await change_nickname(person)
             if int(readstat(person)[1])==0:
                 await channel.send(str(person)[0:-5] + ' DIED HAHAHAHA')
         else:
             await message.reply('You don\'t have enough money. (Costs 5)')
+        update_players()
 
     if msg.startswith('!heal'):
         person = message.mentions[0]
         coins = readstat(user)[0]
-        if int(readstat(person)[1])==3:
+        if str(user) == str(person):
+            players[user.id].heal()
+            players[user.id].coins -= 5
+        elif int(players[person.id].getHp())==3:
             await message.reply('Already max health')
         elif int(coins)>=10:
             await message.reply('<a:potion:853439638005612575>    `'+ str(person)[0:-5] + ' gained a life`')
-            await changestat(person, 1, 1)
-            await changestat(user, 0, -10)
+            players[person.id].heal()
+            players[user.id].coins -= 5
             await change_nickname(person)
         else:
             await message.reply('You don\'t have enough money. (Costs 10)')
+        update_players()
 
 
     if msg == '!coin':
@@ -260,6 +267,9 @@ async def on_message(message):
     if (sum(map(ord, str(msg)))+int(str(time.time() * 1000)[9]))%(int(str(time.time() * 1000)[10])+1)==4 and len(msg)>5 :
         print(time.time())
         await message.add_reaction('<a:bitcoin:853374907563901008>')
+    if(len(msg)>8 and random.randint(1,32)==2):
+        await message.add_reaction('<a:bytecoin:853448824856248371>')
+
 
     if msg.startswith('!stats'):
         stats = []
@@ -291,6 +301,11 @@ async def on_message(message):
 
 
 #UTIL
+    if msg=='!shutdown':
+        if message.channel.permissions_for(message.author).administrator:
+            print('shutdown')
+            update_players()
+            exit()
     if msg.startswith("!responding"):
         value = msg.split("!responding ",1)[1]
         if value.lower() == "true":
@@ -305,53 +320,17 @@ async def on_message(message):
     if msg.lower()=='ping!':
         print("Pinged")
         await message.channel.send("Pong")
-
-#    if msg.startswith("+"):
-#        try:
-#            x = eval(msg[1:])
-#            await channel.send(x)
-#        except:
-#            await channel.send("Unable to read equation")
-
-
 #Trigger Responses
-
     if responding[0]: 
-        if message.content.startswith(tuple(triggers.keys())):
-            await channel.send(triggers.get(message.content))  
-        elif message.content.startswith('inspireme'):
+        if message.content.startswith('inspireme'):
             quote = get_quote()
             await channel.send(quote)
-        elif any(word in message.content for word in anytriggers):
-            await channel.send('booga')
-        elif msg.lower() in ['egor!','sankeeth!','nacc!']:
-            await send_person_picture(channel, msg.lower())
-        #sankeeth reaction
-        if msg.lower() in list(db["trigger"]):
-            await message.add_reaction('<:ibs:761582130966691856>')
-        if msg.startswith("!listtriggers"):
-            await channel.send(list(db["trigger"]))
-        if message.content.startswith("!newtrigger"):
-            trig = msg.split("!newtrigger ",1)[1]
-            update_triggers(trig)
-            await channel.send("New word added")
-        if message.content.startswith("!deletetrigger"):
-            trigger = []
-            if "trigger" in db.keys():
-                index = int(msg.split("!deletetrigger",1)[1])
-                delete_trigger(index)
-                trigger = db["trigger"]
-            await channel.send(trigger)
         if msg=='!movie':
             embed = discord.Embed(title='Joker 2019')
             embed.set_image(url="https://cdn.discordapp.com/attachments/655798594397536291/660941408915554324/Joker_2019.webm")
             await message.channel.send(embed=embed)
         if msg=='howtall?':
             await channel.send("https://cdn.discordapp.com/attachments/529783388295528470/844291219580387338/unknown.png")
-
-
-
-
 #NOTES
     if msg.startswith("!log"):
         print(message.author)
@@ -369,9 +348,6 @@ async def on_message(message):
         print(dir)
         await message.channel.send(dir)
         name.close()
-
-
-
 #CHESS
     if msg=='chess!':
         await draw_board(channel,message.author)
@@ -396,7 +372,6 @@ async def on_message(message):
             await draw_board(channel,message.author,"\nBot: "+board.engine_move(),"🔄")
         else:
             await message.channel.send("Illegal move <:pepega:709439143775830118>")
-
 
 #PICTURE MANIPULATION
     if msg in ['shirify','beckyfy','egorfy','jamesfy','henryfy','sankeethfy','peterfy','naccfy']:
@@ -429,42 +404,48 @@ async def on_message(message):
     for attach in message.attachments:
         if any(attach.filename.lower().endswith(image) for image in image_types):
             attachments.append(attach)
-            
             tim = datetime.now()
             print(tim - prev_time[-1])
-            cooldown = (tim - prev_time[-1])>timedelta(minutes=1)
-                
+            cooldown = (tim - prev_time[-1])>timedelta(minutes=1)     
             if cooldown:
                 prev_time.append(tim)
                 try:
-                    pass
                     #await change_bot_pic(message)
                     await change_server_pic(message)
                 except:
                     print("attempted to change pic FAILED")
                     await message.channel.send('bruh you change avatar too fast. Try again later uwu')
             else:
-                print("Under 10 minutes cooldown")
-        
-    
+                print("Under 10 minutes cooldown")  
 #Posts
     if msg.startswith("!announcement"): 
         print("announcement request")   
         await message.add_reaction('<:upvote:852978943015649310>')
         await message.add_reaction('a<:yes:852920705909260298>')
         await message.add_reaction('a<:no:852920706257256550>')
-        
+
+
+
 @client.event
 async def on_reaction_add(reaction, user):
+    global players
+    global channel
     emoji = reaction.emoji
     channel = reaction.message.channel
     if user.bot:
         return
+    if(str(emoji)=='<a:bytecoin:853448824856248371>'):
+        print('bytecoin')
+        await reaction.message.clear_reactions()
+        await add_coin(user,32)
+        await channel.send(str(user)[0:-5]+' found a LEGENDARY ***BYTECOIN!!!*** (32 Coins)   Total Coins: '+ str(players[user.id].coins))
+        update_players()
     if(str(emoji)=='<a:bitcoin:853374907563901008>'):
         print('coin')
         await reaction.message.clear_reactions()
-        await add_coin(user)
-        await channel.send(str(user)[0:-5]+' found a coin!! Total Coins: '+ readstat(user)[0], delete_after=5.0)
+        players[user.id].add_coin(1)
+        await channel.send(str(user)[0:-5]+' found a coin!! Total Coins: '+ str(players[user.id].coins), delete_after=5.0)
+        update_players()
     if(emoji=='🔄'):
         board.undo()
         board.undo()
@@ -476,7 +457,6 @@ async def on_reaction_add(reaction, user):
         await draw_board(channel,'Move Retracted')
     if(str(emoji)=='<:ibs:761582130966691856>'):
         await channel.send('https://cdn.discordapp.com/attachments/843523078931218462/844026855451131944/emoji.png')
-
     if(str(emoji)=='<:egor:677925462919479313>'):
         print('egor')
         server1 = client.get_guild(352311125242806272)
@@ -484,7 +464,6 @@ async def on_reaction_add(reaction, user):
         with open(dir, 'rb') as f:
             icon = f.read()
         await server1.edit(icon=icon)
-
         await channel.send('Changed Icon to Egor', delete_after = 5.0)
     if(str(emoji)=='<:nacc:713563538899075102>'):
         print('duck')
@@ -538,6 +517,15 @@ async def on_reaction_add(reaction, user):
 
 
 
+
+
+
+
+
+
+
+
 #RUN
 keep_alive.keep_alive()
-client.run("Njk4NTY5MjcxNTX7szL6zXo75LXobJ9CKk6t6pM")
+token = open("token.txt", "r").read()
+client.run(token)
