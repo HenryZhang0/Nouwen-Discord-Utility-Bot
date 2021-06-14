@@ -139,19 +139,6 @@ async def change_bot_pic(message):
     await message.channel.send('Profile picture updated', delete_after=5.0)
 
 
-def readstat(user):
-    id = 0
-    if not type(user) == int:
-        id = str(user.id)
-    else:
-        id = str(user)
-    if not os.path.exists('players/'+id+'.txt'):
-        dst = str('players/'+id+'.txt')
-        copyfile('players/starter.txt', dst)
-
-    stats = open('players/'+id+'.txt', 'r').read().split('\n')
-    return stats
-
 async def changestat(user, stat, modify):
     id = str(user.id)
     
@@ -190,11 +177,13 @@ def new_player(user):
     print(players)
     players[user.id] = Player(str(user)[0:-5])
     update_players()
-
+    
+jew = -1
 @client.event
 async def on_message(message):
     global channel
     global players
+    global jew
     msg = message.content
     channel = message.channel
     user = message.author
@@ -204,15 +193,17 @@ async def on_message(message):
     if msg.startswith('!newplayer'):
         if msg=='!newplayer':
             new_player(user)
+            await change_nickname(user)
         else:
             person = message.mentions[0]
             new_player(person)
+            await change_nickname(person)
         print(players)
         update_players()
 
     if msg.startswith('!transfer'):
         person = message.mentions[0]
-        coins = readstat(user)[0]
+        coins = players[user.id].coins
         transfer = int(msg.split()[2])
         if str(user) == str(person):
             await message.reply('Do you want to get taxed?')
@@ -220,8 +211,8 @@ async def on_message(message):
             await message.reply('you got no money bro')
         else:
             await message.reply('💸    `'+ str(person)[0:-5] + ' recieved '+str(int(transfer*0.77))+' coins`')
-            await changestat(person, 0, int(transfer*0.77))
-            await changestat(user, 0, transfer*-1)
+            players[person.id].coins += int(transfer*0.77)
+            players[user.id].coins +=transfer*-1
         update_players()
 
     if msg.startswith('!attack'):
@@ -229,16 +220,17 @@ async def on_message(message):
         coins = players[user.id].coins
         if str(user) == str(person):
             await message.reply('No self harming in this server')
+            players[user.id].poop()
         elif int(players[person.id].hp)==0:
             await message.reply('You\'re beating a dead horse')
-        elif int(coins)>=5:
+        elif int(coins)>=10:
             await message.reply('<a:cooldoge:852924340353761361><:ikillu:706222776880595007>')
-            players[user.id].coins -= 5
+            players[user.id].coins -= 10
             x = players[user.id].attack(players[person.id])
             await send(x)
             await change_nickname(person)
         else:
-            await message.reply('You don\'t have enough money. (Costs 5)')
+            await message.reply('You don\'t have enough money. (Costs 10)')
         update_players()
 
     if msg.startswith('!heal') and not msg == '!health':
@@ -246,19 +238,19 @@ async def on_message(message):
         if not msg=='!heal':
             person = message.mentions[0]
         coins = players[user.id].coins
-        if coins<5:
-            await message.reply('You don\'t have enough money. (Costs 10)')
+        if coins<15:
+            await message.reply('You don\'t have enough money. (Costs 15)')
         elif int(players[person.id].getHp())==3:
             await message.reply('Already max health')
         elif str(user) == str(person):
             players[user.id].heal()
-            players[user.id].coins -= 5
+            players[user.id].coins -= 15
             await change_nickname(person)
             await message.reply('<a:potion:853439638005612575>    `'+ str(person)[0:-5] + ' gained a life`')
-        elif int(coins)>=10:
+        elif int(coins)>=15:
             await message.reply('<a:potion:853439638005612575>    `'+ str(person)[0:-5] + ' gained a life`')
             players[person.id].heal()
-            players[user.id].coins -= 5
+            players[user.id].coins -= 15
             await change_nickname(person)
         else:
             await message.reply('error')
@@ -280,10 +272,26 @@ async def on_message(message):
         if message.channel.permissions_for(message.author).administrator:
             await message.add_reaction('<a:bitcoin:853374907563901008>')
 
-    if (sum(map(ord, str(msg)))+int(str(time.time() * 1000)[9]))%(int(str(time.time() * 1000)[10])+1)==4 and len(msg)>5 :
+    if msg == '!jew' or (random.randint(1,30)==-1):
+        stole = random.randint(3,20)
+        embed = discord.Embed(title='A random Jew appeared!', description = '💙 💙 💙 💙',color = discord.Colour.blue())
+        #embed.set_author(name=str(user), icon_url=user.avatar_url)
+        embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/527318923763253268/843930270365253642/2560px-Flag_of_Israel.png")
+        embed.set_image(url = 'https://www.stephenhicks.org/wp-content/uploads/2021/03/Jew_stereotype.jpg')
+        embed.add_field(name='He stole %s coins from you' % stole, value = 'Fight The Resourceful Jew before he runs away!', inline=True)
+        embed.set_footer(text='"Oy vey I take some your money"')
+        players[user.id].coins -=stole
+        if players[user.id].coins<0:
+            players[user.id].coins=0
+
+        jew = await message.reply(embed=embed)
+        await jew.add_reaction('<:minecraftsword:853785342154768405>')
+        
+
+    if (sum(map(ord, str(msg)))+int(str(time.time() * 1000)[9]))%(int(str(time.time() * 1000)[10])+1)==5 and len(msg)>5 :
         print(time.time())
         await message.add_reaction('<a:bitcoin:853374907563901008>')
-    if(len(msg)>8 and random.randint(1,32)==2):
+    if(len(msg)>8 and random.randint(1,57)==2):
         await message.add_reaction('<a:bytecoin:853448824856248371>')
 
 
@@ -445,17 +453,26 @@ async def on_message(message):
 
 @client.event
 async def on_reaction_add(reaction, user):
+    global jew
     global players
     global channel
     emoji = reaction.emoji
     channel = reaction.message.channel
     if user.bot:
         return
+    if(str(emoji)=='<:minecraftsword:853785342154768405>'):
+        print(jew)
+        #await jew.edit(content='The jew ran away with your sheckles', embed=None)
+        emb = discord.Embed(title="The jew ran away with your shekels")
+
+        await channel.send(embed=emb)
+        await reaction.message.clear_reactions()
+
     if(str(emoji)=='<a:bytecoin:853448824856248371>'):
         print('bytecoin')
         await reaction.message.clear_reactions()
-        players[user.id].add_coin(32)
-        await channel.send('<a:bytecoin:853448824856248371> '+str(user)[0:-5]+' found a LEGENDARY ***BYTECOIN!!!*** (32 Coins)   Total Coins: '+ str(players[user.id].coins))
+        players[user.id].add_coin(8)
+        await channel.send('<a:bytecoin:853448824856248371> '+str(user)[0:-5]+' found a ***BYTECOIN!!!*** (8 Coins)   Total Coins: '+ str(players[user.id].coins), delete_after=10)
         update_players()
     if(str(emoji)=='<a:bitcoin:853374907563901008>'):
         print('coin')

@@ -14,7 +14,8 @@ class Player:
         self.shield = Shield('Paper Shield', 1, 0)
         self.arsenal = list()
     #end of __init__()
-
+    def poop(self):
+        print('poop')
     def __repr__(self): #for the pokemon name
         return str(self.name)
     def __str__(self):
