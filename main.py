@@ -13,6 +13,11 @@ import cv2
 from datetime import datetime, date, timedelta
 import pickle
 from player import Player
+import urllib
+from PIL import Image
+import asyncio
+from io import BytesIO
+import io
 #GLOBAL VARIABLES
 client = discord.Client()
 image_types = ["png", "jpeg", "gif", "jpg"]
@@ -164,9 +169,12 @@ async def change_nickname(user):
         await user.add_roles(discord.utils.get(user.guild.roles, name='DEAD'))
     else:
         await user.remove_roles(discord.utils.get(user.guild.roles, name='DEAD'))
-    await user.edit(nick=str(user)[0:-5]+' ' + '🖤'*int(players[user.id].hp))
+    await user.edit(nick=str(user)[0:-5]+' ' + '♡'*int(players[user.id].hp))
 
-
+def sort():
+    s = list(p[1] for p in players.items())
+    s.sort(key = lambda x:x.coins, reverse=True)
+    return s
 def update_players():
     pickle_out = open("players.pickle","wb")
     pickle.dump(players, pickle_out)
@@ -177,8 +185,11 @@ def new_player(user):
     print(players)
     players[user.id] = Player(str(user)[0:-5])
     update_players()
-    
+
+nacc = ["https://imgur.com/LmVrSzq.png","https://imgur.com/Y45KmiG.png","https://i.imgur.com/ikVtGVr.png","https://i.imgur.com/g4At6o0.png","https://i.imgur.com/SXP52CD.png","https://i.imgur.com/ZEY0Dcj.png","https://i.imgur.com/3tMTw27.png","https://i.imgur.com/Efwzpny.png","https://i.imgur.com/Z6QnGkG.gif"]  
+egor = ['https://i.imgur.com/RMsfREO.jpg', 'https://i.imgur.com/GpoW5WP.jpg', 'https://i.imgur.com/jTheKpy.png', 'https://i.imgur.com/7p9cwk9.jpg', 'https://i.imgur.com/uM6SC5X.png', 'https://i.imgur.com/r7ecfg0.jpg', 'https://i.imgur.com/EPc8pce.png', 'https://i.imgur.com/oVODwOD.jpg', 'https://i.imgur.com/mYGS9cT.jpg', 'https://i.imgur.com/dVyWXzT.jpg', 'https://i.imgur.com/sgAWJRn.jpg', 'https://i.imgur.com/RAyE0ag.jpg', 'https://i.imgur.com/ksMdtMS.jpg']
 jew = -1
+activejew = [False]
 @client.event
 async def on_message(message):
     global channel
@@ -190,7 +201,7 @@ async def on_message(message):
     if message.author == client.user:
         return
 
-    if msg.startswith('!newplayer'):
+    if msg.startswith('!newplayer') and message.channel.permissions_for(message.author).administrator:
         if msg=='!newplayer':
             new_player(user)
             await change_nickname(user)
@@ -200,6 +211,11 @@ async def on_message(message):
             await change_nickname(person)
         print(players)
         update_players()
+    if msg.startswith('!deleteplayer'):
+        if message.channel.permissions_for(message.author).administrator:
+            #person = message.mentions[0]
+            players.popitem()
+            update_players()
 
     if msg.startswith('!transfer'):
         person = message.mentions[0]
@@ -256,6 +272,9 @@ async def on_message(message):
             await message.reply('error')
         update_players()
 
+    if msg=='!sort':
+        print(sort())
+        print(user.name)
     if msg == '!health' or msg=='!hp':
         output = ''
         for p in players.items():
@@ -264,16 +283,20 @@ async def on_message(message):
         await channel.send("__**HEALTH BOARD**__ <a:hyperheart:853755189889728513>\n" + output)
     if msg == '!money' or msg=='!coins':
         output = ''
-        for p in players.items():
-            p = p[1]
+        s = list(p[1] for p in players.items())
+        s.sort(key = lambda x:x.coins, reverse=True)
+        for p in s:
             output += '`'+str(p) + ': '+ str(p.coins) + '`\n'
         await channel.send("__**MONEY BOARD**__ <a:bitcoin:853374907563901008>\n" + output)
     if msg == '!coin':
         if message.channel.permissions_for(message.author).administrator:
             await message.add_reaction('<a:bitcoin:853374907563901008>')
 
-    if msg == '!jew' or (random.randint(1,30)==-1):
-        stole = random.randint(3,20)
+    if msg=='!jewchance':
+        await channel.send('one in ' + str(40+30*list(map(str,sort())).index(str(user.name))))
+
+    if msg == '!jew' or (str(user.name) in list(map(str,sort())) and (random.randint(0,50+20*list(map(str,sort())).index(str(user.name)))==1)):
+        stole = random.randint(5,30)
         embed = discord.Embed(title='A random Jew appeared!', description = '💙 💙 💙 💙',color = discord.Colour.blue())
         #embed.set_author(name=str(user), icon_url=user.avatar_url)
         embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/527318923763253268/843930270365253642/2560px-Flag_of_Israel.png")
@@ -286,12 +309,24 @@ async def on_message(message):
 
         jew = await message.reply(embed=embed)
         await jew.add_reaction('<:minecraftsword:853785342154768405>')
-        
+        activejew[0] = True
+        await asyncio.sleep(5)
+        if activejew[0]: #IF RUNS AWAY
+            await message.clear_reactions()
+            emb =discord.Embed(title="The jew ran away with your shekels")   
+            emb.set_thumbnail(url="https://cdn.discordapp.com/attachments/527318923763253268/843930270365253642/2560px-Flag_of_Israel.png")
+            emb.set_image(url = 'https://i.imgur.com/c9VfUlh.png')
+            emb.add_field(name='He stole %s coins from you' % stole, value = 'The Resourceful Jew ran away!', inline=True)
+            emb.set_footer(text='"Control the money, control the world HEHEHEE!"')
+            await jew.clear_reactions()     
+            #await channel.send(embed=emb)
+            activejew[0]=False
+            await jew.edit(embed = emb)
 
-    if (sum(map(ord, str(msg)))+int(str(time.time() * 1000)[9]))%(int(str(time.time() * 1000)[10])+1)==5 and len(msg)>5 :
+    if datetime.now().second %8 == 0 and random.randint(2,4)%2==0 and len(msg)>5 :
         print(time.time())
         await message.add_reaction('<a:bitcoin:853374907563901008>')
-    if(len(msg)>8 and random.randint(1,57)==2):
+    if(len(msg)>8 and random.randint(1,170)==2):
         await message.add_reaction('<a:bytecoin:853448824856248371>')
 
 
@@ -356,6 +391,10 @@ async def on_message(message):
             await message.channel.send(embed=embed)
         if msg=='howtall?':
             await channel.send("https://cdn.discordapp.com/attachments/529783388295528470/844291219580387338/unknown.png")
+        if msg == 'egor!':
+            await channel.send(random.choice(egor))
+        if msg == 'nacc!':
+            await channel.send(random.choice(nacc))
 #NOTES
     if msg.startswith("!log"):
         print(message.author)
@@ -412,11 +451,8 @@ async def on_message(message):
         name = open("pfp/name.txt", "r")
         dir = 'pfp/'+str(name.read())
         print(dir)
-        
         combine_picture(dir,'people/'+msg[:-2]+'/'+msg[:-2]+'.png')
         await message.channel.send(file=discord.File("combined.png"))
-
-
 #Updaters
     if msg.endswith("!!"):
         await message.guild.edit(name=(msg[:-2])[0:100])
@@ -424,8 +460,7 @@ async def on_message(message):
 
     if msg=='changepic':
         #await change_bot_pic(message) 
-        await change_server_pic(message)
-    
+        await change_server_pic(message)  
     for attach in message.attachments:
         if any(attach.filename.lower().endswith(image) for image in image_types):
             attachments.append(attach)
@@ -463,20 +498,29 @@ async def on_reaction_add(reaction, user):
     if(str(emoji)=='<:minecraftsword:853785342154768405>'):
         print(jew)
         #await jew.edit(content='The jew ran away with your sheckles', embed=None)
-        emb = discord.Embed(title="The jew ran away with your shekels")
+        activejew[0] = False
+        emb = discord.Embed(title="Fighting Jew in Dreidel Battle!")
 
+        emb.set_thumbnail(url="https://i.imgur.com/RWrDK3P.png")
+        emb.set_image(url = 'https://media1.tenor.com/images/bdfad2a084b3bdadaf0612af140163be/tenor.gif?itemid=13014274')
+        emb.add_field(name='SHIN - ש', value = 'Put another coin in the pot', inline=True)
+        emb.set_footer(text='Spin the Dreidel!')
+        await jew.clear_reactions()     
+        #await channel.send(embed=emb)
+        activejew[0]=False
+        #await jew.edit(embed = emb)
         await channel.send(embed=emb)
         await reaction.message.clear_reactions()
 
     if(str(emoji)=='<a:bytecoin:853448824856248371>'):
-        print('bytecoin')
         await reaction.message.clear_reactions()
+        print('bytecoin')
         players[user.id].add_coin(8)
         await channel.send('<a:bytecoin:853448824856248371> '+str(user)[0:-5]+' found a ***BYTECOIN!!!*** (8 Coins)   Total Coins: '+ str(players[user.id].coins), delete_after=10)
         update_players()
     if(str(emoji)=='<a:bitcoin:853374907563901008>'):
-        print('coin')
         await reaction.message.clear_reactions()
+        print('coin')
         players[user.id].add_coin(1)
         await channel.send(str(user)[0:-5]+' found a coin!! Total Coins: '+ str(players[user.id].coins), delete_after=5.0)
         update_players()
@@ -492,21 +536,26 @@ async def on_reaction_add(reaction, user):
     if(str(emoji)=='<:ibs:761582130966691856>'):
         await channel.send('https://cdn.discordapp.com/attachments/843523078931218462/844026855451131944/emoji.png')
     if(str(emoji)=='<:egor:677925462919479313>'):
-        print('egor')
+        print('egorpic')
         server1 = client.get_guild(352311125242806272)
-        dir = "people/egor/"+random.choice(os.listdir("people/egor/"))
+        url = (random.choice(egor))  
+        urllib.request.urlretrieve(url, 'icon'+url[-4:])
+        dir = 'icon'+url[-4:]
         with open(dir, 'rb') as f:
             icon = f.read()
         await server1.edit(icon=icon)
         await channel.send('Changed Icon to Egor', delete_after = 5.0)
     if(str(emoji)=='<:nacc:713563538899075102>'):
-        print('duck')
+        print('naccpic')
         server1 = client.get_guild(352311125242806272)
-        dir = "people/nacc/"+random.choice(os.listdir("people/nacc/"))
+        #dir = "people/nacc/"+random.choice(os.listdir("people/nacc/"))
+        url = (random.choice(nacc))  
+        urllib.request.urlretrieve(url, 'icon'+url[-4:])
+        #await channel.send(file=discord.File('icon'+url.split('/')[-1]))
+        dir = 'icon'+url[-4:]
         with open(dir, 'rb') as f:
             icon = f.read()
         await server1.edit(icon=icon)
-
         await channel.send('Changed Icon to Nacc', delete_after = 5.0)
 
     if(str(emoji)=='<:downvote:853013163258413076>'):
